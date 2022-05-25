@@ -35,26 +35,37 @@ class IterativeTelemetryLogger:
         enabled: Union[bool, Callable] = True,
         url=URL,
         token=TOKEN,
+        debug: bool = False,
     ):
         self.tool_name = tool_name
         self.tool_version = tool_version
         self.enabled = enabled
         self.url = url
         self.token = token
+        self.debug = debug
+        if self.debug:
+            logger.setLevel(logging.DEBUG)
+            logger.debug("IterativeTelemetryLogger is in debug mode")
 
-    def send_cli_call(self, cmd_name: str, **kwargs):
-        self.send_event("cli", cmd_name, **kwargs)
+    def send_cli_call(self, cmd_name: str, error: str = None, **kwargs):
+        self.send_event("cli", cmd_name, error=error, **kwargs)
 
     def send_event(
         self,
         interface: str,
         action: str,
+        error: str = None,
         use_thread: bool = False,
         use_daemon: bool = True,
         **kwargs,
     ):
         self.send(
-            {"interface": interface, "action": action, "extra": kwargs},
+            {
+                "interface": interface,
+                "action": action,
+                "error": error,
+                "extra": kwargs,
+            },
             use_thread=use_thread,
             use_daemon=use_daemon,
         )
@@ -80,6 +91,7 @@ class IterativeTelemetryLogger:
             raise ValueError(
                 "use_thread and use_daemon cannot be true at the same time"
             )
+        logger.debug("Sending payload %s", payload)
         impl = self._send
         if use_daemon:
             impl = self._send_daemon
