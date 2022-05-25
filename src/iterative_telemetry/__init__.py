@@ -3,17 +3,28 @@
 import json
 import logging
 import os
+import platform
 import subprocess
+import sys
+import uuid
+from functools import lru_cache
 from threading import Thread
-from typing import Any, Dict
+from typing import Any, Callable, Dict, Union
 
+import distro
 import requests
 from appdirs import user_config_dir
 from filelock import FileLock, Timeout
 
 logger = logging.getLogger(__name__)
-TOKEN = "s2s.9vdp1745vpkibkcxznsfus.cgsh70aoy3m39bfuey6shn"
-URL = "https://telemetry.mlem.ai/api/v1/s2s/event?ip_policy=strict"
+TOKEN = "s2s.jtyjusrpsww4k9b76rrjri.bl62fbzrb7nd9n6vn5bpqt"
+URL = (
+    "https://iterative-telemetry.herokuapp.com"
+    "/api/v1/s2s/event?ip_policy=strict"
+)
+
+DO_NOT_TRACK_ENV = "ITERATIVE_DO_NOT_TRACK"
+DO_NOT_TRACK_VALUE = "do-not-track"
 
 
 class IterativeTelemetryLogger:
@@ -21,7 +32,7 @@ class IterativeTelemetryLogger:
         self,
         tool_name,
         tool_version,
-        enabled: bool = True,
+        enabled: Union[bool, Callable] = True,
         url=URL,
         token=TOKEN,
     ):
@@ -36,16 +47,24 @@ class IterativeTelemetryLogger:
 
     def send_event(
         self,
-        event_type: str,
-        event_name: str,
+        interface: str,
+        action: str,
         use_thread: bool = False,
         use_daemon: bool = True,
         **kwargs,
     ):
         self.send(
-            {"interface": event_type, "action": event_name, "extra": kwargs},
+            {"interface": interface, "action": action, "extra": kwargs},
             use_thread=use_thread,
             use_daemon=use_daemon,
+        )
+
+    def is_enabled(self):
+        return (
+            os.environ.get(DO_NOT_TRACK_ENV, None) is None and self.enabled()
+            if callable(self.enabled)
+            else self.enabled
+            and _find_or_create_user_id() != DO_NOT_TRACK_VALUE
         )
 
     def send(
@@ -54,7 +73,7 @@ class IterativeTelemetryLogger:
         use_thread: bool = False,
         use_daemon: bool = True,
     ):
-        if not self.enabled:
+        if not self.is_enabled():
             return
         payload.update(self._runtime_info())
         if use_thread and use_daemon:
@@ -69,8 +88,6 @@ class IterativeTelemetryLogger:
         impl(payload)
 
     def _send_daemon(self, payload):
-        import sys
-
         cmd = (
             f"import requests;requests.post('{self.url}',"
             f"params={{'token':'{self.token}'}},json={payload})"
@@ -121,6 +138,7 @@ class IterativeTelemetryLogger:
         return {
             "tool_name": self.tool_name,
             "tool_version": self.tool_version,
+            # "tool_source": self.tool_source, # TODO
             # "scm_class": _scm_in_use(),
             **_system_info(),
             "user_id": _find_or_create_user_id(),
@@ -129,11 +147,6 @@ class IterativeTelemetryLogger:
 
 
 def _system_info():
-    import platform
-    import sys
-
-    import distro
-
     system = platform.system()
 
     if system == "Windows":
@@ -162,6 +175,7 @@ def _system_info():
     raise NotImplementedError
 
 
+@lru_cache
 def _find_or_create_user_id():
     """
     The user's ID is stored on a file under the global config directory.
@@ -169,9 +183,8 @@ def _find_or_create_user_id():
         {"user_id": "16fd2706-8baf-433b-82eb-8c7fada847da"}
     IDs are generated randomly with UUID.
     """
-    import uuid
 
-    config_dir = user_config_dir("mlem", "Iterative")
+    config_dir = user_config_dir("telemetry", "iterative")
     fname = os.path.join(config_dir, "user_id")
     lockfile = os.path.join(config_dir, "user_id.lock")
 
