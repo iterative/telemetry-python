@@ -187,7 +187,7 @@ def _system_info():
     raise NotImplementedError
 
 
-@lru_cache
+@lru_cache(None)
 def _find_or_create_user_id():
     """
     The user's ID is stored on a file under the global config directory.
