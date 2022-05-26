@@ -13,7 +13,7 @@ from typing import Any, Callable, Dict, Union
 
 import distro
 import requests
-from appdirs import user_config_dir
+from appdirs import user_config_dir  # type: ignore
 from filelock import FileLock, Timeout
 
 logger = logging.getLogger(__name__)
