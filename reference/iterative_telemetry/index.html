@@ -854,7 +854,7 @@ IDs are generated randomly with UUID.</p>
 <span class="normal">222</span>
 <span class="normal">223</span>
 <span class="normal">224</span>
-<span class="normal">225</span></pre></div></td><td class="code"><div class="highlight"><pre><span></span><code><span class="nd">@lru_cache</span>
+<span class="normal">225</span></pre></div></td><td class="code"><div class="highlight"><pre><span></span><code><span class="nd">@lru_cache</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
 <span class="k">def</span> <span class="nf">_find_or_create_user_id</span><span class="p">():</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    The user&#39;s ID is stored on a file under the global config directory.</span>
