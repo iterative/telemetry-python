@@ -230,7 +230,8 @@ def _find_or_create_user_id():
 
 
 def _try_read_legacy_user_id():
-    fname = os.path.join(user_config_dir("dvc", "iterative"), "user_id")
+    config_dir = user_config_dir("dvc", "iterative")
+    fname = os.path.join(config_dir, "user_id")
 
     try:
         with open(fname, encoding="utf8") as fobj:
