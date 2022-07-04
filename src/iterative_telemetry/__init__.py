@@ -187,6 +187,17 @@ def _system_info():
     raise NotImplementedError
 
 
+def _find_legacy_user_id():
+    config_dir = user_config_dir("dvc", "iterative")
+    fname = os.path.join(config_dir, "user_id")
+
+    try:
+        with open(fname, encoding="utf8") as fobj:
+            return json.load(fobj)["user_id"]
+    except (FileNotFoundError, ValueError, KeyError):
+        return None
+
+
 @lru_cache(None)
 def _find_or_create_user_id():
     """
@@ -213,7 +224,10 @@ def _find_or_create_user_id():
                     user_id = json.load(fobj)["user_id"]
 
             except (FileNotFoundError, ValueError, KeyError):
-                user_id = str(uuid.uuid4())
+                user_id = _find_legacy_user_id()
+
+                if not user_id:
+                    user_id = str(uuid.uuid4())
 
                 with open(fname, "w", encoding="utf8") as fobj:
                     json.dump({"user_id": user_id}, fobj)
