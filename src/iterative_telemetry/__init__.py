@@ -196,48 +196,47 @@ def _find_or_create_user_id():
     IDs are generated randomly with UUID.
     """
 
-    legacy_dvc_config_dir = user_config_dir("dvc", "iterative")
-    config_dir = user_config_dir(os.path.join("iterative", "telemetry"), "iterative")
-    legacy_user_id_file = os.path.join(legacy_dvc_config_dir, "user_id")
-    user_id_file = os.path.join(config_dir, "user_id")
+    config_dir = user_config_dir(
+        os.path.join("iterative", "telemetry"), "iterative"
+    )
+    fname = os.path.join(config_dir, "user_id")
     lockfile = os.path.join(config_dir, "user_id.lock")
+
+    # Since the `fname` and `lockfile` are under the global config,
+    # we need to make sure such directory exist already.
+    os.makedirs(config_dir, exist_ok=True)
 
     try:
         with FileLock(  # pylint: disable=abstract-class-instantiated
             lockfile, timeout=5
         ):
             try:
-
-                # Backwards compatibility with DVC legacy telemetry file location
-                # Will only try to copy over if config_dir doesn't exist (first run per machine)
-                if legacy_dvc_config_dir.exists() and not config_dir.exists():
-                    with open(legacy_user_id_file, encoding="utf8") as fobj_legacy:
-                        with open(user_id_file, "w", encoding="utf8") as fobj_new:
-                            user_id = json.load(fobj_legacy)["user_id"]
-                            json.dump({"user_id": user_id}, fobj_new)
-
-            except (FileNotFoundError, ValueError, KeyError):
-
-                # Fail silently
-                pass
-
-            try:
-
-                # Since the `user_id_file` and `lockfile` are under the global config,
-                # we need to make sure such directory exist already.
-                os.makedirs(config_dir, exist_ok=True)
-
-                with open(user_id_file, encoding="utf8") as fobj:
+                with open(fname, encoding="utf8") as fobj:
                     user_id = json.load(fobj)["user_id"]
 
             except (FileNotFoundError, ValueError, KeyError):
-                user_id = str(uuid.uuid4())
 
-                with open(user_id_file, "w", encoding="utf8") as fobj:
+                # Backwards compatibility with DVC legacy telemetry location.
+                user_id = _try_read_legacy_user_id() or str(uuid.uuid4())
+
+                with open(fname, "w", encoding="utf8") as fobj:
                     json.dump({"user_id": user_id}, fobj)
 
             return user_id
 
     except Timeout:
         logger.debug("Failed to acquire %s", lockfile)
+    return None
+
+
+def _try_read_legacy_user_id():
+    fname = os.path.join(user_config_dir("dvc", "iterative"), "user_id")
+
+    try:
+        with open(fname, encoding="utf8") as fobj:
+            return json.load(fobj)["user_id"]
+
+    except (FileNotFoundError, ValueError, KeyError):
+        pass
+
     return None
