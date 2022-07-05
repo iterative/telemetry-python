@@ -8,6 +8,7 @@ import subprocess
 import sys
 import uuid
 from functools import lru_cache
+from pathlib import Path
 from threading import Thread
 from typing import Any, Callable, Dict, Union
 
@@ -187,39 +188,44 @@ def _system_info():
     raise NotImplementedError
 
 
+def generate_id():
+    """TODO: check environ for CI-based ID"""
+    return str(uuid.uuid4())
+
+
 @lru_cache(None)
 def _find_or_create_user_id():
     """
     The user's ID is stored on a file under the global config directory.
-    The file should contain a JSON with a "user_id" key:
-        {"user_id": "16fd2706-8baf-433b-82eb-8c7fada847da"}
-    IDs are generated randomly with UUID.
+    The file should contain a single string:
+        16fd2706-8baf-433b-82eb-8c7fada847da
+    IDs are generated randomly with UUID4.
     """
-
-    config_dir = user_config_dir(os.path.join("iterative", "telemetry"), False)
-    fname = os.path.join(config_dir, "user_id")
-    lockfile = os.path.join(config_dir, "user_id.lock")
-
-    # Since the `fname` and `lockfile` are under the global config,
-    # we need to make sure such directory exist already.
-    os.makedirs(config_dir, exist_ok=True)
+    # DVC backwards-compatibility
+    old = Path(user_config_dir(str(Path("dvc") / "user_id"), "iterative"))
+    # cross-product path
+    new = Path(user_config_dir(str(Path("iterative") / "telemetry"), False))
+    new.parent.mkdir(mode=0o755, parents=True, exist_ok=True)
+    lockfile = str(new.with_suffix(".lock"))
 
     try:
         with FileLock(  # pylint: disable=abstract-class-instantiated
             lockfile, timeout=5
         ):
-            try:
-                with open(fname, encoding="utf8") as fobj:
-                    user_id = json.load(fobj)["user_id"]
+            uid = generate_id()
+            if new.exists():
+                uid = new.read_text().strip()
+            else:
+                if old.exists():
+                    uid = json.load(old.open(encoding="utf8"))["user_id"]
+                new.write_text(uid)
 
-            except (FileNotFoundError, ValueError, KeyError):
-                user_id = str(uuid.uuid4())
+            # only for non-DVC packages,
+            # write legacy file in case legacy DVC is installed later
+            if not old.exists() and uid.lower() != "do-not-track":
+                old.write_text(f'{{"user_id": "{uid}"}}')
 
-                with open(fname, "w", encoding="utf8") as fobj:
-                    json.dump({"user_id": user_id}, fobj)
-
-            return user_id
-
+            return uid
     except Timeout:
         logger.debug("Failed to acquire %s", lockfile)
     return None
