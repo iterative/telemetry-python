@@ -222,7 +222,7 @@ def _find_or_create_user_id():
 
             # only for non-DVC packages,
             # write legacy file in case legacy DVC is installed later
-            if not old.exists() and uid.lower() != "do-not-track":
+            if not old.exists() and uid.lower() != DO_NOT_TRACK_VALUE.lower():
                 json.dump({"user_id": uid}, old.open("w", encoding="utf8"))
 
             return uid
