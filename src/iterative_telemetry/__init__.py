@@ -196,7 +196,7 @@ def _find_or_create_user_id():
     IDs are generated randomly with UUID.
     """
 
-    config_dir = user_config_dir("telemetry", "iterative")
+    config_dir = user_config_dir(os.path.join("iterative", "telemetry"), False)
     fname = os.path.join(config_dir, "user_id")
     lockfile = os.path.join(config_dir, "user_id.lock")
 
