@@ -196,8 +196,8 @@ def generate_id():
 def _find_or_create_user_id():
     """
     The user's ID is stored on a file under the global config directory.
-    The file should contain a single string:
-        16fd2706-8baf-433b-82eb-8c7fada847da
+    The file should contain JSON with a `user_id` key:
+        {"user_id": "16fd2706-8baf-433b-82eb-8c7fada847da"}
     IDs are generated randomly with UUID4.
     """
     # DVC backwards-compatibility
