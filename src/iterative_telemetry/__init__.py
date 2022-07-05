@@ -214,16 +214,16 @@ def _find_or_create_user_id():
         ):
             uid = generate_id()
             if new.exists():
-                uid = new.read_text(encoding="utf8").strip()
+                uid = json.load(new.open(encoding="utf8"))["user_id"]
             else:
                 if old.exists():
                     uid = json.load(old.open(encoding="utf8"))["user_id"]
-                new.write_text(uid, encoding="utf8")
+                json.dump({"user_id": uid}, new.open("w", encoding="utf8"))
 
             # only for non-DVC packages,
             # write legacy file in case legacy DVC is installed later
             if not old.exists() and uid.lower() != "do-not-track":
-                old.write_text(f'{{"user_id": "{uid}"}}', encoding="utf8")
+                json.dump({"user_id": uid}, old.open("w", encoding="utf8"))
 
             return uid
     except Timeout:
