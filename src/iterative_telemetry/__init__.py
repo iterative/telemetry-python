@@ -154,7 +154,7 @@ class IterativeTelemetryLogger:
             # "scm_class": _scm_in_use(),
             **_system_info(),
             "user_id": _find_or_create_user_id(),
-            "group_id": _find_or_create_user_id(),  # TODO
+            "group_id": "",  # TODO
         }
 
 
