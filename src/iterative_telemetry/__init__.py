@@ -75,8 +75,7 @@ class IterativeTelemetryLogger:
         return (
             os.environ.get(DO_NOT_TRACK_ENV, None) is None and self.enabled()
             if callable(self.enabled)
-            else self.enabled
-            and _find_or_create_user_id() != DO_NOT_TRACK_VALUE
+            else self.enabled and _find_or_create_user_id() is not None
         )
 
     def send(
@@ -225,7 +224,8 @@ def _find_or_create_user_id():
             if not old.exists() and uid.lower() != DO_NOT_TRACK_VALUE.lower():
                 json.dump({"user_id": uid}, old.open("w", encoding="utf8"))
 
-            return uid
+            if uid.lower() != DO_NOT_TRACK_VALUE.lower():
+                return uid
     except Timeout:
         logger.debug("Failed to acquire %s", lockfile)
     return None
