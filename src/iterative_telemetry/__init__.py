@@ -8,6 +8,7 @@ import subprocess
 import sys
 import uuid
 from functools import lru_cache
+from pathlib import Path
 from threading import Thread
 from typing import Any, Callable, Dict, Union
 
@@ -191,19 +192,22 @@ def _system_info():
 def _find_or_create_user_id():
     """
     The user's ID is stored on a file under the global config directory.
+    In Case the current file is not found, a legacy DVC location is checked,
+     and we try to dump the user_id there to support users working with
+     legacy DVC versions
     The file should contain a JSON with a "user_id" key:
         {"user_id": "16fd2706-8baf-433b-82eb-8c7fada847da"}
     IDs are generated randomly with UUID.
     """
 
-    config_dir = user_config_dir(
-        os.path.join("iterative", "telemetry"), "iterative"
-    )
-    fname = os.path.join(config_dir, "user_id")
-    lockfile = os.path.join(config_dir, "user_id.lock")
+    config_dir = user_config_dir(str(Path("iterative") / "telemetry"), False)
+    user_id_file = Path(config_dir / "user_id")
+    legacy_config_dir = user_config_dir("dvc", "iterative")
+    legacy_user_id_file = Path(legacy_config_dir / "user_id")
+    lockfile = Path(config_dir / "user_id.lock")
 
-    # Since the `fname` and `lockfile` are under the global config,
-    # we need to make sure such directory exist already.
+    # Since the `user_id_file` and `lockfile` are under the global config,
+    # we need to ensure directory exists.
     os.makedirs(config_dir, exist_ok=True)
 
     try:
@@ -211,16 +215,26 @@ def _find_or_create_user_id():
             lockfile, timeout=5
         ):
             try:
-                with open(fname, encoding="utf8") as fobj:
+                with user_id_file.open(encoding="utf8") as fobj:
                     user_id = json.load(fobj)["user_id"]
 
             except (FileNotFoundError, ValueError, KeyError):
 
-                # Backwards compatibility with DVC legacy telemetry location.
-                user_id = _try_read_legacy_user_id() or str(uuid.uuid4())
+                # Backwards compatibility - if created by legacy DVC
+                user_id = _try_read_legacy_user_id(legacy_user_id_file) or str(
+                    uuid.uuid4()
+                )
 
-                with open(fname, "w", encoding="utf8") as fobj:
+                with user_id_file.open(mode="w", encoding="utf8") as fobj:
                     json.dump({"user_id": user_id}, fobj)
+
+            # Backwards compatibility - write legacy file in case legacy DVC is
+            # still used
+            if (
+                not legacy_user_id_file.exists()
+                and user_id.lower() != DO_NOT_TRACK_VALUE
+            ):
+                _try_write_legacy_user_id(legacy_user_id_file, user_id)
 
             return user_id
 
@@ -229,15 +243,21 @@ def _find_or_create_user_id():
     return None
 
 
-def _try_read_legacy_user_id():
-    config_dir = user_config_dir("dvc", "iterative")
-    fname = os.path.join(config_dir, "user_id")
-
+def _try_read_legacy_user_id(filepath: Path):
     try:
-        with open(fname, encoding="utf8") as fobj:
+        with filepath.open(encoding="utf8") as fobj:
             return json.load(fobj)["user_id"]
 
     except (FileNotFoundError, ValueError, KeyError):
         pass
 
     return None
+
+
+def _try_write_legacy_user_id(filepath: Path, user_id: str):
+    try:
+        with filepath.open(mode="w", encoding="utf8") as fobj:
+            json.dump({"user_id": user_id}, fobj)
+
+    except (FileNotFoundError, ValueError, KeyError):
+        pass
