@@ -200,32 +200,42 @@ def _find_or_create_user_id():
         {"user_id": "16fd2706-8baf-433b-82eb-8c7fada847da"}
     IDs are generated randomly with UUID4.
     """
+    config_file = Path(
+        user_config_dir(os.path.join("iterative", "telemetry"), False)
+    )
+    config_file.parent.mkdir(mode=0o755, parents=True, exist_ok=True)
+    lockfile = str(config_file.with_suffix(".lock"))
     # DVC backwards-compatibility
-    old = Path(user_config_dir(str(Path("dvc") / "user_id"), "iterative"))
-    # cross-product path
-    new = Path(user_config_dir(str(Path("iterative") / "telemetry"), False))
-    new.parent.mkdir(mode=0o755, parents=True, exist_ok=True)
-    lockfile = str(new.with_suffix(".lock"))
+    config_file_old = Path(
+        user_config_dir(os.path.join("dvc", "user_id"), "iterative")
+    )
+    lockfile_old = str(config_file_old.with_suffix(".lock"))
 
     try:
         with FileLock(  # pylint: disable=abstract-class-instantiated
             lockfile, timeout=5
         ):
-            uid = generate_id()
-            if new.exists():
-                uid = json.load(new.open(encoding="utf8"))["user_id"]
-            else:
-                if old.exists():
-                    uid = json.load(old.open(encoding="utf8"))["user_id"]
-                json.dump({"user_id": uid}, new.open("w", encoding="utf8"))
+            user_id = read_user_id(config_file)
+            if user_id is None:
+                if config_file_old.parent.is_dir():
+                    with FileLock(lockfile_old, timeout=5):
+                        user_id = read_user_id(config_file_old)
+                    if user_id is None:
+                        user_id = generate_id()
+                with config_file.open(mode="w", encoding="utf8") as fd:
+                    json.dump({"user_id": user_id}, fd)
 
-            # only for non-DVC packages,
-            # write legacy file in case legacy DVC is installed later
-            if not old.exists() and uid.lower() != DO_NOT_TRACK_VALUE.lower():
-                json.dump({"user_id": uid}, old.open("w", encoding="utf8"))
-
-            if uid.lower() != DO_NOT_TRACK_VALUE.lower():
-                return uid
+            if user_id.lower() != DO_NOT_TRACK_VALUE.lower():
+                return user_id
     except Timeout:
         logger.debug("Failed to acquire %s", lockfile)
+    return None
+
+
+def read_user_id(config_file: Path):
+    try:
+        with config_file.open(encoding="utf8") as fd:
+            return json.load(fd)["user_id"]
+    except (FileNotFoundError, ValueError, KeyError):
+        pass
     return None
