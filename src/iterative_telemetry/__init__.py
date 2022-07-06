@@ -37,7 +37,6 @@ class IterativeTelemetryLogger:
         url=URL,
         token=TOKEN,
         debug: bool = False,
-        write_legacy: bool = True,
     ):
         self.tool_name = tool_name
         self.tool_version = tool_version
@@ -45,7 +44,6 @@ class IterativeTelemetryLogger:
         self.url = url
         self.token = token
         self.debug = debug
-        self.write_legacy = write_legacy
         if self.debug:
             logger.setLevel(logging.DEBUG)
             logger.debug("IterativeTelemetryLogger is in debug mode")
@@ -77,8 +75,7 @@ class IterativeTelemetryLogger:
         return (
             os.environ.get(DO_NOT_TRACK_ENV, None) is None and self.enabled()
             if callable(self.enabled)
-            else self.enabled
-            and _find_or_create_user_id(self.write_legacy) is not None
+            else self.enabled and _find_or_create_user_id() is not None
         )
 
     def send(
@@ -156,7 +153,7 @@ class IterativeTelemetryLogger:
             # "tool_source": self.tool_source, # TODO
             # "scm_class": _scm_in_use(),
             **_system_info(),
-            "user_id": _find_or_create_user_id(self.write_legacy),
+            "user_id": _find_or_create_user_id(),
             "group_id": "",  # TODO
         }
 
@@ -196,7 +193,7 @@ def generate_id():
 
 
 @lru_cache(None)
-def _find_or_create_user_id(write_legacy=True):
+def _find_or_create_user_id():
     """
     The user's ID is stored on a file under the global config directory.
     The file should contain JSON with a `user_id` key:
@@ -224,11 +221,7 @@ def _find_or_create_user_id(write_legacy=True):
 
             # only for non-DVC packages,
             # write legacy file in case legacy DVC is installed later
-            if (
-                write_legacy
-                and not old.exists()
-                and uid.lower() != DO_NOT_TRACK_VALUE.lower()
-            ):
+            if not old.exists() and uid.lower() != DO_NOT_TRACK_VALUE.lower():
                 json.dump({"user_id": uid}, old.open("w", encoding="utf8"))
 
             if uid.lower() != DO_NOT_TRACK_VALUE.lower():
