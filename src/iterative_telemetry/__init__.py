@@ -222,8 +222,8 @@ def _find_or_create_user_id():
                         user_id = read_user_id(config_file_old)
                     if user_id is None:
                         user_id = generate_id()
-                with config_file.open(mode="w", encoding="utf8") as fd:
-                    json.dump({"user_id": user_id}, fd)
+                with config_file.open(mode="w", encoding="utf8") as fobj:
+                    json.dump({"user_id": user_id}, fobj)
 
             if user_id.lower() != DO_NOT_TRACK_VALUE.lower():
                 return user_id
@@ -234,8 +234,8 @@ def _find_or_create_user_id():
 
 def read_user_id(config_file: Path):
     try:
-        with config_file.open(encoding="utf8") as fd:
-            return json.load(fd)["user_id"]
+        with config_file.open(encoding="utf8") as fobj:
+            return json.load(fobj)["user_id"]
     except (FileNotFoundError, ValueError, KeyError):
         pass
     return None
