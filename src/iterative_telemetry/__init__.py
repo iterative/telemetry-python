@@ -188,15 +188,15 @@ def _system_info():
 
 
 def generate_id():
-    """TODO: check environ for CI-based ID"""
-    return str(uuid.uuid4())
+    """A randomly generated ID string"""
+    return str(uuid.uuid4())  # TODO: CI env-based ID
 
 
 @lru_cache(None)
 def _find_or_create_user_id():
     """
     The user's ID is stored on a file under the global config directory.
-    The file should contain JSON with a `user_id` key:
+    The file should contain a JSON with a "user_id" key:
         {"user_id": "16fd2706-8baf-433b-82eb-8c7fada847da"}
     IDs are generated randomly with UUID4.
     """
