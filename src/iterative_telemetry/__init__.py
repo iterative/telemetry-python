@@ -187,9 +187,26 @@ def _system_info():
     raise NotImplementedError
 
 
-def generate_id():
+def _generate_id():
     """A randomly generated ID string"""
     return str(uuid.uuid4())  # TODO: CI env-based ID
+
+
+def _read_user_id(config_file: Path):
+    try:
+        with config_file.open(encoding="utf8") as fobj:
+            return json.load(fobj)["user_id"]
+    except (FileNotFoundError, ValueError, KeyError):
+        pass
+    return None
+
+
+def _read_user_id_locked(config_file: Path):
+    lockfile = str(config_file.with_suffix(".lock"))
+    if config_file.parent.is_dir():
+        with FileLock(lockfile, timeout=5):
+            return _read_user_id(config_file)
+    return None
 
 
 @lru_cache(None)
@@ -209,19 +226,16 @@ def _find_or_create_user_id():
     config_file_old = Path(
         user_config_dir(os.path.join("dvc", "user_id"), "iterative")
     )
-    lockfile_old = str(config_file_old.with_suffix(".lock"))
 
     try:
         with FileLock(  # pylint: disable=abstract-class-instantiated
             lockfile, timeout=5
         ):
-            user_id = read_user_id(config_file)
+            user_id = _read_user_id(config_file)
             if user_id is None:
-                if config_file_old.parent.is_dir():
-                    with FileLock(lockfile_old, timeout=5):
-                        user_id = read_user_id(config_file_old)
-                    if user_id is None:
-                        user_id = generate_id()
+                user_id = _read_user_id_locked(config_file_old)
+                if user_id is None:
+                    user_id = _generate_id()
                 with config_file.open(mode="w", encoding="utf8") as fobj:
                     json.dump({"user_id": user_id}, fobj)
 
@@ -229,13 +243,4 @@ def _find_or_create_user_id():
                 return user_id
     except Timeout:
         logger.debug("Failed to acquire %s", lockfile)
-    return None
-
-
-def read_user_id(config_file: Path):
-    try:
-        with config_file.open(encoding="utf8") as fobj:
-            return json.load(fobj)["user_id"]
-    except (FileNotFoundError, ValueError, KeyError):
-        pass
     return None
