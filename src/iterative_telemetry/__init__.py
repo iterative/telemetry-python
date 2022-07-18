@@ -233,14 +233,18 @@ def _find_or_create_user_id():
         ):
             user_id = _read_user_id(config_file)
             if user_id is None:
-                user_id = _read_user_id_locked(config_file_old)
+                try:
+                    user_id = _read_user_id_locked(config_file_old)
+                except Timeout:
+                    logger.debug(
+                        "Failed to acquire %s",
+                        config_file_old.with_suffix(".lock"),
+                    )
+                    return None
                 if user_id is None:
                     user_id = _generate_id()
                 with config_file.open(mode="w", encoding="utf8") as fobj:
                     json.dump({"user_id": user_id}, fobj)
-
-            if user_id.lower() != DO_NOT_TRACK_VALUE.lower():
-                return user_id
     except Timeout:
         logger.debug("Failed to acquire %s", lockfile)
-    return None
+    return user_id if user_id.lower() != DO_NOT_TRACK_VALUE.lower() else None
