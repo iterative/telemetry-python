@@ -8,6 +8,7 @@ import subprocess
 import sys
 import uuid
 from functools import lru_cache
+from pathlib import Path
 from threading import Thread
 from typing import Any, Callable, Dict, Union
 
@@ -74,8 +75,7 @@ class IterativeTelemetryLogger:
         return (
             os.environ.get(DO_NOT_TRACK_ENV, None) is None and self.enabled()
             if callable(self.enabled)
-            else self.enabled
-            and _find_or_create_user_id() != DO_NOT_TRACK_VALUE
+            else self.enabled and _find_or_create_user_id() is not None
         )
 
     def send(
@@ -154,7 +154,7 @@ class IterativeTelemetryLogger:
             # "scm_class": _scm_in_use(),
             **_system_info(),
             "user_id": _find_or_create_user_id(),
-            "group_id": _find_or_create_user_id(),  # TODO
+            "group_id": "",  # TODO
         }
 
 
@@ -187,39 +187,64 @@ def _system_info():
     raise NotImplementedError
 
 
+def _generate_id():
+    """A randomly generated ID string"""
+    return str(uuid.uuid4())  # TODO: CI env-based ID
+
+
+def _read_user_id(config_file: Path):
+    try:
+        with config_file.open(encoding="utf8") as fobj:
+            return json.load(fobj)["user_id"]
+    except (FileNotFoundError, ValueError, KeyError):
+        pass
+    return None
+
+
+def _read_user_id_locked(config_file: Path):
+    lockfile = str(config_file.with_suffix(".lock"))
+    if config_file.parent.is_dir():
+        with FileLock(lockfile, timeout=5):
+            return _read_user_id(config_file)
+    return None
+
+
 @lru_cache(None)
 def _find_or_create_user_id():
     """
     The user's ID is stored on a file under the global config directory.
     The file should contain a JSON with a "user_id" key:
         {"user_id": "16fd2706-8baf-433b-82eb-8c7fada847da"}
-    IDs are generated randomly with UUID.
+    IDs are generated randomly with UUID4.
     """
-
-    config_dir = user_config_dir("telemetry", "iterative")
-    fname = os.path.join(config_dir, "user_id")
-    lockfile = os.path.join(config_dir, "user_id.lock")
-
-    # Since the `fname` and `lockfile` are under the global config,
-    # we need to make sure such directory exist already.
-    os.makedirs(config_dir, exist_ok=True)
+    config_file = Path(
+        user_config_dir(os.path.join("iterative", "telemetry"), False)
+    )
+    config_file.parent.mkdir(mode=0o755, parents=True, exist_ok=True)
+    lockfile = str(config_file.with_suffix(".lock"))
+    # DVC backwards-compatibility
+    config_file_old = Path(
+        user_config_dir(os.path.join("dvc", "user_id"), "iterative")
+    )
 
     try:
         with FileLock(  # pylint: disable=abstract-class-instantiated
             lockfile, timeout=5
         ):
-            try:
-                with open(fname, encoding="utf8") as fobj:
-                    user_id = json.load(fobj)["user_id"]
-
-            except (FileNotFoundError, ValueError, KeyError):
-                user_id = str(uuid.uuid4())
-
-                with open(fname, "w", encoding="utf8") as fobj:
+            user_id = _read_user_id(config_file)
+            if user_id is None:
+                try:
+                    user_id = _read_user_id_locked(config_file_old)
+                except Timeout:
+                    logger.debug(
+                        "Failed to acquire %s",
+                        config_file_old.with_suffix(".lock"),
+                    )
+                    return None
+                if user_id is None:
+                    user_id = _generate_id()
+                with config_file.open(mode="w", encoding="utf8") as fobj:
                     json.dump({"user_id": user_id}, fobj)
-
-            return user_id
-
     except Timeout:
         logger.debug("Failed to acquire %s", lockfile)
-    return None
+    return user_id if user_id.lower() != DO_NOT_TRACK_VALUE.lower() else None
