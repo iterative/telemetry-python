@@ -75,7 +75,7 @@ class IterativeTelemetryLogger:
         return (
             os.environ.get(DO_NOT_TRACK_ENV, None) is None and self.enabled()
             if callable(self.enabled)
-            else self.enabled and _find_or_create_user_id() is not None
+            else self.enabled and find_or_create_user_id() is not None
         )
 
     def send(
@@ -153,7 +153,7 @@ class IterativeTelemetryLogger:
             # "tool_source": self.tool_source, # TODO
             # "scm_class": _scm_in_use(),
             **_system_info(),
-            "user_id": _find_or_create_user_id(),
+            "user_id": find_or_create_user_id(),
             "group_id": "",  # TODO
         }
 
@@ -210,7 +210,7 @@ def _read_user_id_locked(config_file: Path):
 
 
 @lru_cache(None)
-def _find_or_create_user_id():
+def find_or_create_user_id():
     """
     The user's ID is stored on a file under the global config directory.
     The file should contain a JSON with a "user_id" key:
