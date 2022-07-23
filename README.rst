@@ -37,6 +37,7 @@ Features
 * can be disabled in all tools by setting `ITERATIVE_DO_NOT_TRACK=1` env var
 * single anonymised `user_id` across all `iterative` projects
 * collects minimal amount of anonymised data. For example:
+
 .. code:: python
 
     {
