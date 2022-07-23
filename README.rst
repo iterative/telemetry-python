@@ -37,15 +37,15 @@ Features
 * can be disabled in all tools by setting `ITERATIVE_DO_NOT_TRACK=1` env var
 * single anonymised `user_id` across all `iterative` projects
 * collects minimal amount of anonymised data. For example:
-```
-{
-    "tool_name": "dvc",
-    "tool_version": "2.14.0",
-    "user_id": "e798d2e2-8941-4f24-a868-3adcbf6467df",
-    "os_name": "mac",
-    "os_version": "21.4.0",
-}
-```
+.. code:: python
+
+    {
+        "tool_name": "dvc",
+        "tool_version": "2.14.0",
+        "user_id": "e798d2e2-8941-4f24-a868-3adcbf6467df",
+        "os_name": "mac",
+        "os_version": "21.4.0",
+    }
 
 Requirements
 ------------
