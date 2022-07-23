@@ -44,7 +44,7 @@ Features
         "tool_version": "2.14.0",
         "user_id": "e798d2e2-8941-4f24-a868-3adcbf6467df",
         "os_name": "mac",
-        "os_version": "21.4.0",
+        "os_version": "12.3",
     }
 
 Requirements
