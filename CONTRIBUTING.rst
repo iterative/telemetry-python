@@ -8,13 +8,11 @@ welcomes contributions in the form of bug reports, feature requests, and pull re
 Here is a list of important resources for contributors:
 
 - `Source Code`_
-- `Documentation`_
 - `Issue Tracker`_
 - `Code of Conduct`_
 
 .. _Apache 2.0 license: https://opensource.org/licenses/Apache-2.0
 .. _Source Code: https://github.com/iterative/iterative-telemetry
-.. _Documentation: https://iterative-telemetry.readthedocs.io/
 .. _Issue Tracker: https://github.com/iterative/iterative-telemetry/issues
 
 How to report a bug
@@ -43,7 +41,7 @@ Request features on the `Issue Tracker`_.
 How to set up your development environment
 ------------------------------------------
 
-You need Python 3.7+ and the following tools:
+You need Python 3.8+ and the following tools:
 
 - Nox_
 
