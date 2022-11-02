@@ -198,9 +198,9 @@ def _generate_id():
 _ci_id_generators: List[Callable[[], Optional[Tuple[str, str]]]] = []
 
 
-def ci_id_generator(f):
-    _ci_id_generators.append(f)
-    return lru_cache()(f)
+def ci_id_generator(func):
+    _ci_id_generators.append(func)
+    return lru_cache()(func)
 
 
 @ci_id_generator
