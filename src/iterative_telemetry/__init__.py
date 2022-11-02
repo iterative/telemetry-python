@@ -80,16 +80,16 @@ class IterativeTelemetryLogger:
         action: str = None,
         skip: Union[bool, Callable[[TelemetryEvent], bool]] = None,
     ):
-        def decorator(f):
-            @wraps(f)
+        def decorator(func):
+            @wraps(func)
             def inner(*args, **kwargs):
                 with self.event_scope(
-                    interface, action or f.__name__
+                    interface, action or func.__name__
                 ) as event:
                     try:
-                        return f(*args, **kwargs)
-                    except Exception as e:
-                        event.error = e.__class__.__name__
+                        return func(*args, **kwargs)
+                    except Exception as exc:
+                        event.error = exc.__class__.__name__
                         raise
                     finally:
                         if (
