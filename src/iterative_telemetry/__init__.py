@@ -1,6 +1,7 @@
 """Iterative Telemetry."""
 import contextlib
 import dataclasses
+import hashlib
 import json
 import logging
 import os
@@ -11,7 +12,7 @@ import uuid
 from functools import lru_cache, wraps
 from pathlib import Path
 from threading import Thread
-from typing import Any, Callable, Dict, Iterator, Optional, Union
+from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple, Union
 
 import distro
 import requests
@@ -206,15 +207,18 @@ class IterativeTelemetryLogger:
         """
         Gather information from the environment where DVC runs to fill a report
         """
-
+        ci_id = _generate_ci_id()
+        if ci_id:
+            group_id, user_id = ci_id
+        else:
+            group_id, user_id = None, find_or_create_user_id()
         return {
             "tool_name": self.tool_name,
             "tool_version": self.tool_version,
-            # "tool_source": self.tool_source, # TODO
+            "user_id": user_id,
+            "group_id": group_id,
             # "scm_class": _scm_in_use(),
             **_system_info(),
-            "user_id": find_or_create_user_id(),
-            "group_id": "",  # TODO
         }
 
 
@@ -249,7 +253,82 @@ def _system_info():
 
 def _generate_id():
     """A randomly generated ID string"""
-    return str(uuid.uuid4())  # TODO: CI env-based ID
+    return str(uuid.uuid4())
+
+
+_ci_id_generators: List[Callable[[], Optional[Tuple[str, str]]]] = []
+
+
+def ci_id_generator(func):
+    _ci_id_generators.append(func)
+    return lru_cache()(func)
+
+
+@ci_id_generator
+def _generate_github_id():
+    """group_id = "$GITHUB_SERVER_URL/$(dirname "$GITHUB_REPOSITORY")"
+    user_id = "$(gh api users/$GITHUB_ACTOR --jq '.name, .login, .id' |
+                 xargs echo)"""
+    if not os.environ.get("GITHUB_ACTIONS"):
+        return None
+
+    server_url = os.environ.get("GITHUB_SERVER_URL")
+    repository = os.environ.get("GITHUB_REPOSITORY")
+    actor = os.environ.get("GITHUB_ACTOR")
+    group_id = f"{server_url}/{os.path.dirname(repository)}"
+    try:
+        user_id = subprocess.check_output(
+            ["gh", "api", f"users/{actor}", "--jq", ".name, .login, .id"]
+        )
+    except subprocess.SubprocessError:
+        return None
+    return group_id, user_id
+
+
+@ci_id_generator
+def _generate_gitlab_id():
+    """group_id = "$CI_SERVER_URL/$CI_PROJECT_ROOT_NAMESPACE"
+    user_id = "$GITLAB_USER_NAME $GITLAB_USER_LOGIN $GITLAB_USER_ID"""
+    user_name = os.environ.get("GITLAB_USER_NAME")
+    if not user_name:
+        return None
+    server_url = os.environ.get("CI_SERVER_URL")
+    root_namespace = os.environ.get("CI_PROJECT_ROOT_NAMESPACE")
+    user_login = os.environ.get("GITLAB_USER_LOGIN")
+    user_id = os.environ.get("GITLAB_USER_ID")
+
+    group_id = f"{server_url}/{root_namespace}"
+    user_id = f"{user_name} {user_login} {user_id}"
+    return group_id, user_id
+
+
+@ci_id_generator
+def _generate_bitbucket_id():
+    """group_id = "$BITBUCKET_WORKSPACE"
+    user_id = "$(git log -1 --pretty=format:'%ae')"""
+    group_id = os.environ.get("BITBUCKET_WORKSPACE")
+    if not group_id:
+        return None
+    try:
+        user_id = subprocess.check_output(
+            ["git", "log", "-1", "--pretty=format:'%ae'"]
+        )
+        return group_id, user_id
+    except subprocess.SubprocessError:
+        return None
+
+
+@ci_id_generator
+def _generate_generic_ci_id():
+    return None
+
+
+def _generate_ci_id():
+    for generator in _ci_id_generators:
+        res = generator()
+        if res is not None:
+            return tuple(map(deterministic, res))
+    return None
 
 
 def _read_user_id(config_file: Path):
@@ -308,3 +387,17 @@ def find_or_create_user_id():
     except Timeout:
         logger.debug("Failed to acquire %s", lockfile)
     return user_id if user_id.lower() != DO_NOT_TRACK_VALUE.lower() else None
+
+
+def deterministic(data: str) -> uuid.UUID:
+    namespace = uuid.uuid5(uuid.NAMESPACE_DNS, "iterative.ai")
+    name = hashlib.scrypt(
+        password=data.encode(),
+        salt=namespace.bytes,
+        n=1 << 16,
+        r=8,
+        p=1,
+        maxmem=128 * 1024**2,
+        dklen=8,
+    )
+    return uuid.uuid5(namespace, name.hex())
