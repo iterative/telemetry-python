@@ -212,7 +212,11 @@ class IterativeTelemetryLogger:
             group_id, user_id = ci_id
         else:
             group_id, user_id = None, find_or_create_user_id()
+        major, minor, patch, *_ = sys.version_info
+
         return {
+            "python_version": f"{major}.{minor}.{patch}",
+            "python_version_minor": f"{major}.{minor}",
             "tool_name": self.tool_name,
             "tool_version": self.tool_version,
             "user_id": user_id,
