@@ -1,4 +1,6 @@
 """Iterative Telemetry."""
+import contextlib
+import dataclasses
 import hashlib
 import json
 import logging
@@ -7,10 +9,10 @@ import platform
 import subprocess
 import sys
 import uuid
-from functools import lru_cache
+from functools import lru_cache, wraps
 from pathlib import Path
 from threading import Thread
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple, Union
 
 import distro
 import requests
@@ -26,6 +28,14 @@ URL = (
 
 DO_NOT_TRACK_ENV = "ITERATIVE_DO_NOT_TRACK"
 DO_NOT_TRACK_VALUE = "do-not-track"
+
+
+@dataclasses.dataclass
+class TelemetryEvent:
+    interface: str
+    action: str
+    error: Optional[str] = None
+    kwargs: Dict[str, Any] = dataclasses.field(default_factory=dict)
 
 
 class IterativeTelemetryLogger:
@@ -47,6 +57,57 @@ class IterativeTelemetryLogger:
         if self.debug:
             logger.setLevel(logging.DEBUG)
             logger.debug("IterativeTelemetryLogger is in debug mode")
+        self._current_event: Optional[TelemetryEvent] = None
+
+    def log_param(self, key: str, value):
+        if self._current_event:
+            self._current_event.kwargs[key] = value
+
+    @contextlib.contextmanager
+    def event_scope(
+        self, interface: str, action: str
+    ) -> Iterator[TelemetryEvent]:
+        event = TelemetryEvent(interface=interface, action=action)
+        tmp = self._current_event
+        self._current_event = event
+        try:
+            yield event
+        finally:
+            self._current_event = tmp
+
+    def log(
+        self,
+        interface: str,
+        action: str = None,
+        skip: Union[bool, Callable[[TelemetryEvent], bool]] = None,
+    ):
+        def decorator(func):
+            @wraps(func)
+            def inner(*args, **kwargs):
+                with self.event_scope(
+                    interface, action or func.__name__
+                ) as event:
+                    try:
+                        return func(*args, **kwargs)
+                    except Exception as exc:
+                        event.error = exc.__class__.__name__
+                        raise
+                    finally:
+                        if (
+                            skip is None
+                            or (callable(skip) and not skip(event))
+                            or not skip
+                        ):
+                            self.send_event(
+                                event.interface,
+                                event.action,
+                                event.error,
+                                **event.kwargs,
+                            )
+
+            return inner
+
+        return decorator
 
     def send_cli_call(self, cmd_name: str, error: str = None, **kwargs):
         self.send_event("cli", cmd_name, error=error, **kwargs)
