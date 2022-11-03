@@ -14,6 +14,7 @@ from pathlib import Path
 from threading import Thread
 from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple, Union
 
+
 import distro
 import requests
 from appdirs import user_config_dir  # type: ignore
