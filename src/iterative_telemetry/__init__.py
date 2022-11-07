@@ -215,8 +215,7 @@ class IterativeTelemetryLogger:
         major, minor, patch, *_ = sys.version_info
 
         return {
-            "python_version": f"{major}.{minor}.{patch}",
-            "python_version_minor": f"{major}.{minor}",
+            "python_version": {"major": major, "minor": minor, "patch": patch},
             "tool_name": self.tool_name,
             "tool_version": self.tool_version,
             "user_id": user_id,
