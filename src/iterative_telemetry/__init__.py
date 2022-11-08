@@ -6,7 +6,7 @@ import json
 import logging
 import os
 import platform
-import subprocess
+import subprocess  # nosec B404
 import sys
 import uuid
 from functools import lru_cache, wraps
@@ -20,7 +20,7 @@ from appdirs import user_config_dir  # type: ignore
 from filelock import FileLock, Timeout
 
 logger = logging.getLogger(__name__)
-TOKEN = "s2s.jtyjusrpsww4k9b76rrjri.bl62fbzrb7nd9n6vn5bpqt"
+TOKEN = "s2s.jtyjusrpsww4k9b76rrjri.bl62fbzrb7nd9n6vn5bpqt"  # nosec B105
 URL = (
     "https://iterative-telemetry.herokuapp.com"
     "/api/v1/s2s/event?ip_policy=strict"
@@ -168,7 +168,7 @@ class IterativeTelemetryLogger:
 
         if os.name == "nt":
 
-            from subprocess import (
+            from subprocess import (  # nosec B404
                 CREATE_NEW_PROCESS_GROUP,
                 CREATE_NO_WINDOW,
                 STARTF_USESHOWWINDOW,
@@ -178,14 +178,16 @@ class IterativeTelemetryLogger:
             detached_flags = CREATE_NEW_PROCESS_GROUP | CREATE_NO_WINDOW
             startupinfo = STARTUPINFO()
             startupinfo.dwFlags |= STARTF_USESHOWWINDOW
-            subprocess.Popen(  # pylint: disable=consider-using-with
+            # pylint: disable=consider-using-with
+            subprocess.Popen(  # nosec B603
                 [sys.executable, "-c", cmd],
                 creationflags=detached_flags,
                 close_fds=True,
                 startupinfo=startupinfo,
             )
         elif os.name == "posix":
-            subprocess.Popen(  # pylint: disable=consider-using-with
+            # pylint: disable=consider-using-with
+            subprocess.Popen(  # nosec B603
                 [sys.executable, "-c", cmd],
                 close_fds=True,
             )
@@ -280,7 +282,7 @@ def _generate_github_id():
     actor = os.environ.get("GITHUB_ACTOR")
     group_id = f"{server_url}/{os.path.dirname(repository)}"
     try:
-        user_id = subprocess.check_output(
+        user_id = subprocess.check_output(  # nosec B603, B607
             ["gh", "api", f"users/{actor}", "--jq", ".name, .login, .id"]
         )
     except subprocess.SubprocessError:
@@ -313,7 +315,7 @@ def _generate_bitbucket_id():
     if not group_id:
         return None
     try:
-        user_id = subprocess.check_output(
+        user_id = subprocess.check_output(  # nosec B603, B607
             ["git", "log", "-1", "--pretty=format:'%ae'"]
         )
         return group_id, user_id
