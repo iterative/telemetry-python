@@ -283,7 +283,8 @@ def _generate_github_id():
     group_id = f"{server_url}/{os.path.dirname(repository)}"
     try:
         user_id = subprocess.check_output(  # nosec B603, B607
-            ["gh", "api", f"users/{actor}", "--jq", ".name, .login, .id"]
+            ["gh", "api", f"users/{actor}", "--jq", ".name, .login, .id"],
+            text=True
         )
     except subprocess.SubprocessError:
         return None
@@ -316,7 +317,8 @@ def _generate_bitbucket_id():
         return None
     try:
         user_id = subprocess.check_output(  # nosec B603, B607
-            ["git", "log", "-1", "--pretty=format:'%ae'"]
+            ["git", "log", "-1", "--pretty=format:'%ae'"],
+            text=True
         )
         return group_id, user_id
     except subprocess.SubprocessError:
