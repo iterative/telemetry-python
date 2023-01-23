@@ -32,6 +32,7 @@ DO_NOT_TRACK_VALUE = "do-not-track"
 
 @dataclasses.dataclass
 class TelemetryEvent:
+    # pylint: disable=multiple-statements
     interface: str
     action: str
     error: Optional[str] = None
