@@ -37,7 +37,8 @@ def safety(session: nox.Session) -> None:
     """Scan dependencies for insecure packages."""
     session.install(".[dev]")
     session.install("safety")
-    session.run("safety", "check", "--full-report")
+    # Ignore https://github.com/pytest-dev/py/issues/287
+    session.run("safety", "check", "--full-report", "-i", "51457")
 
 
 @nox.session
