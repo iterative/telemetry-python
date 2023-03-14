@@ -287,7 +287,7 @@ def _generate_github_id():
             ["gh", "api", f"users/{actor}", "--jq", ".name, .login, .id"],
             text=True,
         )
-    except subprocess.SubprocessError:
+    except (subprocess.SubprocessError, FileNotFoundError):
         return None
     return group_id, user_id
 
