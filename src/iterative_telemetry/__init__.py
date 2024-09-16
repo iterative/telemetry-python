@@ -83,8 +83,8 @@ class IterativeTelemetryLogger:
     def log(
         self,
         interface: str,
-        action: str = None,
-        skip: Union[bool, Callable[[TelemetryEvent], bool]] = None,
+        action: str | None = None,
+        skip: Union[bool, Callable[[TelemetryEvent], bool], None] = None,
     ):
         def decorator(func):
             @wraps(func)
@@ -114,14 +114,14 @@ class IterativeTelemetryLogger:
 
         return decorator
 
-    def send_cli_call(self, cmd_name: str, error: str = None, **kwargs):
+    def send_cli_call(self, cmd_name: str, error: str | None = None, **kwargs):
         self.send_event("cli", cmd_name, error=error, **kwargs)
 
     def send_event(
         self,
         interface: str,
         action: str,
-        error: str = None,
+        error: str | None = None,
         use_thread: bool = False,
         use_daemon: bool = True,
         **kwargs,
@@ -141,7 +141,7 @@ class IterativeTelemetryLogger:
         self,
         interface: str,
         action: str,
-        error: str = None,
+        error: str | None = None,
         use_thread: bool = False,
         use_daemon: bool = True,
         **kwargs,
