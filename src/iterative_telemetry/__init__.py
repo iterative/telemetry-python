@@ -59,6 +59,7 @@ class IterativeTelemetryLogger:
             logger.setLevel(logging.DEBUG)
             logger.debug("IterativeTelemetryLogger is in debug mode")
         self._current_event: Optional[TelemetryEvent] = None
+        self._event_sent = False
 
     def log_param(self, key: str, value):
         if self._current_event:
@@ -132,6 +133,22 @@ class IterativeTelemetryLogger:
             use_thread=use_thread,
             use_daemon=use_daemon,
         )
+
+    def send_event_once(
+            self, interface: str,
+            action: str, error: str = None,
+            use_thread: bool = False,
+            use_daemon: bool = True,
+            **kwargs
+    ):
+        if self._event_sent:
+            return
+
+        self.send_event(
+            interface, action, error=error, use_thread=use_thread, use_daemon=use_daemon, **kwargs
+        )
+        self._event_sent = True
+
 
     def is_enabled(self):
         return (
