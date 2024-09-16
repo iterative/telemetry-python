@@ -59,6 +59,7 @@ class IterativeTelemetryLogger:
             logger.setLevel(logging.DEBUG)
             logger.debug("IterativeTelemetryLogger is in debug mode")
         self._current_event: Optional[TelemetryEvent] = None
+
         self._event_sent = False
 
     def log_param(self, key: str, value):

@@ -39,7 +39,9 @@ def safety(session: nox.Session) -> None:
     session.install("safety")
     # Ignore https://github.com/pytest-dev/py/issues/287
     # Ignore https://bugzilla.redhat.com/show_bug.cgi?id=1677653#c4
-    session.run("safety", "check", "--full-report", "-i", "51457", "-i", "70612")
+    session.run(
+        "safety", "check", "--full-report", "-i", "51457", "-i", "70612"
+    )
 
 
 @nox.session
