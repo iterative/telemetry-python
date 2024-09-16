@@ -135,20 +135,26 @@ class IterativeTelemetryLogger:
         )
 
     def send_event_once(
-            self, interface: str,
-            action: str, error: str = None,
-            use_thread: bool = False,
-            use_daemon: bool = True,
-            **kwargs
+        self,
+        interface: str,
+        action: str,
+        error: str = None,
+        use_thread: bool = False,
+        use_daemon: bool = True,
+        **kwargs,
     ):
         if self._event_sent:
             return
 
         self.send_event(
-            interface, action, error=error, use_thread=use_thread, use_daemon=use_daemon, **kwargs
+            interface,
+            action,
+            error=error,
+            use_thread=use_thread,
+            use_daemon=use_daemon,
+            **kwargs,
         )
         self._event_sent = True
-
 
     def is_enabled(self):
         return (
