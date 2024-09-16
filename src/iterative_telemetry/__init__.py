@@ -40,6 +40,8 @@ class TelemetryEvent:
 
 
 class IterativeTelemetryLogger:
+    # pylint: disable=R0902
+
     def __init__(
         self,
         tool_name,
