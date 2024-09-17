@@ -40,6 +40,8 @@ class TelemetryEvent:
 
 
 class IterativeTelemetryLogger:
+    # pylint: disable=R0902
+
     def __init__(
         self,
         tool_name,
@@ -60,6 +62,8 @@ class IterativeTelemetryLogger:
             logger.debug("IterativeTelemetryLogger is in debug mode")
         self._current_event: Optional[TelemetryEvent] = None
 
+        self._event_sent = False
+
     def log_param(self, key: str, value):
         if self._current_event:
             self._current_event.kwargs[key] = value
@@ -79,8 +83,8 @@ class IterativeTelemetryLogger:
     def log(
         self,
         interface: str,
-        action: str = None,
-        skip: Union[bool, Callable[[TelemetryEvent], bool]] = None,
+        action: Optional[str] = None,
+        skip: Union[bool, Callable[[TelemetryEvent], bool], None] = None,
     ):
         def decorator(func):
             @wraps(func)
@@ -110,14 +114,16 @@ class IterativeTelemetryLogger:
 
         return decorator
 
-    def send_cli_call(self, cmd_name: str, error: str = None, **kwargs):
+    def send_cli_call(
+        self, cmd_name: str, error: Optional[str] = None, **kwargs
+    ):
         self.send_event("cli", cmd_name, error=error, **kwargs)
 
     def send_event(
         self,
         interface: str,
         action: str,
-        error: str = None,
+        error: Optional[str] = None,
         use_thread: bool = False,
         use_daemon: bool = True,
         **kwargs,
@@ -132,6 +138,28 @@ class IterativeTelemetryLogger:
             use_thread=use_thread,
             use_daemon=use_daemon,
         )
+
+    def send_event_once(
+        self,
+        interface: str,
+        action: str,
+        error: Optional[str] = None,
+        use_thread: bool = False,
+        use_daemon: bool = True,
+        **kwargs,
+    ):
+        if self._event_sent:
+            return
+
+        self.send_event(
+            interface,
+            action,
+            error=error,
+            use_thread=use_thread,
+            use_daemon=use_daemon,
+            **kwargs,
+        )
+        self._event_sent = True
 
     def is_enabled(self):
         return (
