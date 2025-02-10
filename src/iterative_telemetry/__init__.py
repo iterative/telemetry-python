@@ -192,6 +192,8 @@ class IterativeTelemetryLogger:
     def _send_daemon(self, payload):
         cmd = f"""
 import requests, logging
+
+logger = logging.getLogger("iterative-telemetry")
 try:
     requests.post(
         '{self.url}',
@@ -199,8 +201,8 @@ try:
         json={payload},
         timeout=2
     )
-except (requests.exceptions.RequestException, Exception) as e:
-    logging.debug(f'Telemetry request failed: {{str(e)}}')
+except Exception as e:
+    logger.debug(f'Telemetry request failed: {{str(e)}}')
 """
 
         if os.name == "nt":
