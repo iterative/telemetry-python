@@ -199,7 +199,7 @@ try:
         '{self.url}',
         params={{'token':'{self.token}'}},
         json={payload},
-        timeout=2
+        timeout=10
     )
 except Exception as e:
     logger.debug(f'Telemetry request failed: {{str(e)}}')
