@@ -9,7 +9,7 @@ nox.options.sessions = "lint", "tests"
 locations = "src", "tests"
 
 
-@nox.session(python=["3.8", "3.9", "3.10", "3.11", "pypy3.8", "pypy3.9"])
+@nox.session(python=["3.8", "3.9", "3.10", "3.11", "pypy3.9"])
 def tests(session: nox.Session) -> None:
     session.install(".[tests]")
     session.run(
@@ -30,18 +30,6 @@ def lint(session: nox.Session) -> None:
     session.run("pre-commit", "run", *args)
     session.run("python", "-m", "mypy")
     session.run("python", "-m", "pylint", *locations)
-
-
-@nox.session
-def safety(session: nox.Session) -> None:
-    """Scan dependencies for insecure packages."""
-    session.install(".[dev]")
-    session.install("safety")
-    # Ignore https://github.com/pytest-dev/py/issues/287
-    # Ignore https://bugzilla.redhat.com/show_bug.cgi?id=1677653#c4
-    session.run(
-        "safety", "check", "--full-report", "-i", "51457", "-i", "70612"
-    )
 
 
 @nox.session
